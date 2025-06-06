@@ -7,7 +7,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 import chromadb
 
-# Use DirectoryLoader with Unstructured as the underlying loader/
+# use directoryloader w unstructured as the underlying loader
 def load_pdf_documents():
     """Load PDF documents from a directory and convert them into processable data."""
     loader = DirectoryLoader(
