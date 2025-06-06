@@ -75,5 +75,5 @@ def ingestData():
     store_embeddings(split_docs, embeddings)
     print("Embeddings stored in the vector database.")
     
-if __name__ == "__main__": # Run the ingestion process
+if __name__ == "__main__": # run it
     ingestData()
