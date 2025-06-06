@@ -1,0 +1,11 @@
+# requirements.txt
+langchain
+langchain-openai  # Or another LLM provider library
+fastapi
+uvicorn[standard]
+python-dotenv
+chromadb
+sentence-transformers # For embeddings
+unstructured[pdf]   # For reading documents like 10-Ks
+yfinance          # For the live stock price API tool
+lxml              # Often needed by document loaders
