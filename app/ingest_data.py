@@ -7,7 +7,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 import chromadb
 
-# Use DirectoryLoader with Unstructured as the underlying loader/
+# use directoryloader w unstructured as the underlying loader
 def load_pdf_documents():
     """Load PDF documents from a directory and convert them into processable data."""
     loader = DirectoryLoader(
@@ -38,21 +38,28 @@ def embed_documents(chunkedDocs):
     embeddings = embeddings.tolist()
     return embeddings
 
-def store_embeddings(chunkedDocs, embeddings):
-    """Store embeddings in a vector database."""
-    chroma_client = chromadb.Client()
-    collection = chroma_client.create_collection(name="chunkedTextEmbeddings")
+def store_embeddings(chunkedDocs, embeddings, batch_size=4000):
+    """Store embeddings and documents in ChromaDB with batch processing.
+    """
+    chroma_client = chromadb.PersistentClient()
+    collection = chroma_client.get_or_create_collection(name="chunkedTextEmbeddings")
     
-    documents = [doc.page_content for doc in chunkedDocs]
-    metadatas = [{"source": doc.metadata.get("source", "unknown")} for doc in chunkedDocs]  # Preserve original metadata
-    ids = [f"doc_{i}" for i in range(len(chunkedDocs))]
-    
-    collection.add(
-        documents=documents,
-        embeddings=embeddings,
-        metadatas=metadatas,
-        ids=ids
-    )
+    # Process in batches cuz of chromadb limit
+    for i in range(0, len(chunkedDocs), batch_size):
+        batch_docs = chunkedDocs[i:i+batch_size]
+        batch_embeddings = embeddings[i:i+batch_size]
+        
+        documents = [doc.page_content for doc in batch_docs]
+        metadatas = [{"source": doc.metadata.get("source", "unknown")} for doc in batch_docs]
+        ids = [f"doc_{i+j}" for j in range(len(batch_docs))]
+        
+        collection.add(
+            documents=documents,
+            embeddings=batch_embeddings,
+            metadatas=metadatas,
+            ids=ids
+        )
+        print(f"Processed batch {i//batch_size + 1}/{(len(chunkedDocs)-1)//batch_size + 1}")
         
 def ingestData():
     """Main function to ingest data from PDFs."""
