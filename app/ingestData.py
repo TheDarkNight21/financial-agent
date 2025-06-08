@@ -79,7 +79,7 @@ def filter_metadata(metadata: dict) -> dict:
 
 
 # --- Main Ingestion Logic ---
-def ingestData(persist_directory: str = "./chroma_db"):
+def ingestData(persist_directory: str = "./chroma"):
     """
     Main function to load, split, embed, and store PDF data in a persistent Chroma vectorstore.
     This revised version uses the more efficient `Chroma.from_documents` method.
@@ -117,7 +117,7 @@ def ingestData(persist_directory: str = "./chroma_db"):
 if __name__ == "__main__":
     # This will run the full ingestion pipeline when the script is executed.
     # Make sure you have a './data' directory with some PDFs in it.
-    ingestData(persist_directory="./chroma_db")
+    ingestData(persist_directory="./chroma")
 
 
 # --- HOW TO LOAD AND QUERY THE DATABASE IN YOUR APP ---
@@ -129,7 +129,7 @@ if __name__ == "__main__":
 # Here is an example of what your query function should look like in your
 # main application (e.g., app.py, api.py).
 
-def query_database(query_text: str, persist_directory: str = "./chroma_db"):
+def query_database(query_text: str, persist_directory: str = "./chroma"):
     """
     Loads the persisted vector database and performs a similarity search.
     """
@@ -165,12 +165,12 @@ def query_database(query_text: str, persist_directory: str = "./chroma_db"):
         print("-" * 20)
 
 
-# Example of how to use the query function.
-# You would call this from your application logic.
-if __name__ == "__main__":
-    print("\n" + "="*50)
-    print("RUNNING A TEST QUERY")
-    print("="*50)
-    # You would replace this with a real query from your application
-    test_query = "what is the main topic of the documents?"
-    query_database(test_query)
+# # Example of how to use the query function.
+# # You would call this from your application logic.
+# if __name__ == "__main__":
+#     print("\n" + "="*50)
+#     print("RUNNING A TEST QUERY")
+#     print("="*50)
+#     # You would replace this with a real query from your application
+#     test_query = "what is the main topic of the documents?"
+#     query_database(test_query)
