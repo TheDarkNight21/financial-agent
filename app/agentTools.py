@@ -1,67 +1,122 @@
-import chromadb
 import langchain_core
-from langchain.chains import RetrievalQA
-from langchain.llms import OpenAI
-
 import yfinance as yf
 from langchain.agents import Tool
-
 from langchain_experimental.utilities import PythonREPL
+from langchain_chroma import Chroma
+from ingest_data import CustomSentenceTransformerEmbeddings # Make sure this import works
 
-
+# --- RAG Tool for SEC Filings ---
 
 def ragTool():
     """
-    search thru 10-k files from chroma db and return relevant information
+    Search through 10-K files from a ChromaDB vectorstore and return relevant information.
     """
-    vectorStore = chromadb.load(persist_directory=".")
-    baseRetriever = vectorStore.as_retriever()
+    print("Initializing RAG tool...")
+    
+    embedding_model = CustomSentenceTransformerEmbeddings()
+
+    vectorstore = Chroma(
+        persist_directory="./chroma_db",  
+        embedding_function=embedding_model,
+        collection_name="pdf_embeddings" 
+    )
+    
+    doc_count = vectorstore._collection.count()
+    print(f"Successfully loaded vectorstore. Number of documents: {doc_count}")
+
+    if doc_count == 0:
+        print("Warning: Vectorstore is empty. The RAG tool will not find any documents.")
+
+    baseRetriever = vectorstore.as_retriever(search_kwargs={"k": 5})
     
     retrieverTool = langchain_core.tools.retriever.create_retriever_tool(
-        retriever = baseRetriever,
-        name = "sec_filing_search",
-        description = """Useful for answering questions about a company's financial performance, business strategy, 
-        risks, and executive commentary. Use this to find information from official 10-K SEC filings.""",
+        retriever=baseRetriever,
+        name="sec_filing_search",
+        description="""Use this to answer questions about a company's financial performance, business strategy, 
+        risks, and executive commentary by searching through their 10-K SEC filings. 
+        For example: 'What were the main business risks for Apple in their latest 10-K?'"""
     )
 
+    print("RAG tool created successfully.")
     return retrieverTool
+
+
+# --- Other Tools (No changes needed) ---
 
 def getStockPrice(ticker: str) -> str:
     """
-    simple get stock price fetcher function for tool using ticker.
+    Fetches the latest stock price for a given ticker symbol using yfinance.
     """
     try:
         stock = yf.Ticker(ticker)
-        price = stock.history(period="1d")["Close"].iloc[-1]
+        price = stock.history(period="1d", interval="1m")['Close'].iloc[-1]
         return f"The current price of {ticker.upper()} is ${price:.2f}."
     except Exception as e:
         return f"Could not retrieve price for {ticker.upper()}: {e}"
 
-
 def stockPriceTool():
     """
-    uses get stock price function to get current stock price of a given ticker symbol that can be used by agent.
+    Creates a LangChain Tool for getting the current stock price.
     """
     stockTool = Tool(
         name="stock_price_lookup",
         func=getStockPrice,
-        description="Useful for getting the current stock price for a given stock ticker symbol. For example, 'MSFT' for Microsoft."
+        description="Useful for getting the current stock price for a given stock ticker symbol. For example, 'MSFT' for Microsoft or 'AAPL' for Apple."
     )
-    
     return stockTool
 
 def calculatorTool():
     """
-    uses python repl to create a calculator tool that can be used by agent.
+    Creates a LangChain Tool that uses a Python REPL for calculations.
     """
     pythonRepl = PythonREPL()
     repl_tool = Tool(
-        name="python_repl",
-        description="""Executes python code and returns the result. The code runs in a static sandbox without interactive mode, 
-        so print output or save output to a file.""",
+        name="python_repl_calculator",
+        description="""A calculator that executes a line of python code and returns the result. 
+        Use this for any mathematical calculations. The code runs in a sandbox.
+        Example: '3.14 * 2**2'""",
         func=pythonRepl.run,
     )
-    
     return repl_tool
 
 
+# --- Verification Step (Corrected) ---
+if __name__ == "__main__":
+    # Test 1: Ensure the ragTool() function can be called without errors and creates a Tool.
+    print("--- Testing RAG Tool Initialization ---")
+    rag_tool_instance = ragTool()
+    print(f"Successfully created a tool named '{rag_tool_instance.name}' of type {type(rag_tool_instance)}")
+    
+    # Test 2: Directly test the retriever logic to ensure it pulls documents.
+    # This isolates the test to just the retrieval part, which is what we want to verify.
+    print("\n--- Testing direct retrieval with a sample query ---")
+    try:
+        # Re-create the core components needed for retrieval
+        embedding_model = CustomSentenceTransformerEmbeddings()
+        vectorstore = Chroma(
+            persist_directory="./chroma_db",
+            embedding_function=embedding_model,
+            collection_name="pdf_embeddings"
+        )
+        
+        # This is the actual retriever object we want to test
+        retriever_for_test = vectorstore.as_retriever()
+
+        test_query = "What risks did Meta mention?"
+        print(f"Directly invoking retriever with query: '{test_query}'")
+        
+        # .invoke() is the standard way to call retrievers, chains, etc.
+        results = retriever_for_test.invoke(test_query)
+        
+        if results:
+            print(f"\nFound {len(results)} results:")
+            for i, doc in enumerate(results):
+                print(f"\n--- Result {i+1} ---")
+                print(f"Source: {doc.metadata.get('source', 'N/A')}")
+                print(f"Content: {doc.page_content[:300]}...")
+        else:
+            print("No results found from direct retrieval test. Check your DB and query.")
+
+    except Exception as e:
+        print(f"\nAn error occurred during the direct retrieval test: {e}")
+        print("Please ensure 'chroma_db' directory exists and contains data.")
