@@ -8,7 +8,7 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 
 # use directoryloader w unstructured as the underlying loader
-def load_pdf_documents():
+def loadPdfDocuments():
     """Load PDF documents from a directory and convert them into processable data."""
     loader = DirectoryLoader(
     "./data", 
@@ -20,16 +20,18 @@ def load_pdf_documents():
     docs = loader.load()
     return docs
 # 10-k is too long to process the way it is, need to split loaded docs into smaller chunnks (1000 char is a good start)
-def split_documents(docs):
+def splitDocuments(docs):
     """Split documents into smaller chunks for processing."""
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, 
-        chunk_overlap=200, 
-        length_function=len
+        chunk_size=1000,
+        chunk_overlap=200,
+        separators=["\n\n", "\n", ".", " "],  # Prioritize splitting on logical breaks
+        length_function=len,
+        add_start_index=True  # Helpful for tracking where the chunk came from
     )
     return text_splitter.split_documents(docs)
 
-def embed_documents(chunkedDocs):
+def embedDocuments(chunkedDocs):
     """Embed documents using a vector store.""" 
     texts = [doc.page_content for doc in chunkedDocs]
     model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
@@ -38,24 +40,24 @@ def embed_documents(chunkedDocs):
     embeddings = embeddings.tolist()
     return embeddings
 
-def store_embeddings(chunkedDocs, embeddings, batch_size=4000):
+def storeEmbeddings(chunkedDocs, embeddings, batch_size=4000):
     """Store embeddings and documents in ChromaDB with batch processing.
     """
-    chroma_client = chromadb.PersistentClient()
-    collection = chroma_client.get_or_create_collection(name="chunkedTextEmbeddings")
+    chromaClient = chromadb.PersistentClient()
+    collection = chromaClient.get_or_create_collection(name="chunkedTextEmbeddings")
     
     # Process in batches cuz of chromadb limit
     for i in range(0, len(chunkedDocs), batch_size):
-        batch_docs = chunkedDocs[i:i+batch_size]
-        batch_embeddings = embeddings[i:i+batch_size]
+        batchDocs = chunkedDocs[i:i+batch_size]
+        batchEmbeddings = embeddings[i:i+batch_size]
         
-        documents = [doc.page_content for doc in batch_docs]
-        metadatas = [{"source": doc.metadata.get("source", "unknown")} for doc in batch_docs]
-        ids = [f"doc_{i+j}" for j in range(len(batch_docs))]
+        documents = [doc.page_content for doc in batchDocs]
+        metadatas = [{"source": doc.metadata.get("source", "unknown")} for doc in batchDocs]
+        ids = [f"doc_{i+j}" for j in range(len(batchDocs))]
         
         collection.add(
             documents=documents,
-            embeddings=batch_embeddings,
+            embeddings=batchEmbeddings,
             metadatas=metadatas,
             ids=ids
         )
@@ -63,16 +65,16 @@ def store_embeddings(chunkedDocs, embeddings, batch_size=4000):
         
 def ingestData():
     """Main function to ingest data from PDFs."""
-    docs = load_pdf_documents()
+    docs = loadPdfDocuments()
     print(f"Loaded {len(docs)} documents.")
     
-    split_docs = split_documents(docs)
-    print(f"Split into {len(split_docs)} chunks.")
+    splitDocs = splitDocuments(docs)
+    print(f"Split into {len(splitDocs)} chunks.")
     
-    embeddings = embed_documents(split_docs)
+    embeddings = embedDocuments(splitDocs)
     print(f"Generated embeddings for {len(embeddings)} chunks.")
     
-    store_embeddings(split_docs, embeddings)
+    storeEmbeddings(splitDocs, embeddings)
     print("Embeddings stored in the vector database.")
     
 if __name__ == "__main__": # run it

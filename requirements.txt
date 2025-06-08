@@ -1,6 +1,7 @@
 # requirements.txt
 langchain
-langchain-openai  # Or another LLM provider library
+langchain-openai
+langchain_experimental  # Or another LLM provider library
 -qU langchain-community unstructured
 tqdm
 fastapi
