@@ -1,15 +1,23 @@
-# requirements.txt
-langchain
-langchain-openai
-langchain_experimental
-langgraph  # Or another LLM provider library
--qU langchain-community unstructured
-tqdm
+# Core API and Server
 fastapi
 uvicorn[standard]
+
+# Langchain and AI Core
+# We list each package on its own line.
+langchain
+langchain-community
+langchain-openai
+langchain-experimental
+langchain-chroma
+langgraph
+
+# Data Handling and Embeddings
+sentence-transformers
+unstructured[pdf]   # The [pdf] extra installs dependencies for PDF parsing.
+lxml                # Often required by unstructured.
+
+# Utilities and Tools
 python-dotenv
-chromadb
-sentence-transformers # For embeddings
-unstructured[pdf]   # For reading documents like 10-Ks
-yfinance          # For the live stock price API tool
-lxml              # Often needed by document loaders
+yfinance            # For the live stock price API tool
+chromadb            # The vector database itself.
+tqdm                # A progress bar utility, often used by other libraries.
