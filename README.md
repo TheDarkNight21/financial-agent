@@ -44,7 +44,6 @@ cd financial-agent
 
 2. Create the Environment File
 Create a file named .env in the project's root directory. This file will securely store your API key. Add your OpenAI API key to it:
-# .env
 OPENAI_API_KEY="sk-..."
 
 3. Place Data Files
